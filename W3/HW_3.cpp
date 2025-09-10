@@ -24,12 +24,12 @@ public:
     // Methods
 
     void showInfo(int index = -1) const {
-    if (index >= 0) cout << index + 1 << ". ";
-    cout << "Brand: " << brand
-            << "\n   Type: " << type
-            << "\n   Max Speed: " << maxSpeed << " km/h"
-            << "\n   Fuel Type: " << fuelType
-            << "\n==========================================" << endl;
+    if (index >= 0)
+        cout << index + 1 << ".  Brand: " << brand
+             << "\n   Type: " << type
+             << "\n   Max Speed: " << maxSpeed << " km/h"
+             << "\n   Fuel Type: " << fuelType
+             << "\n==========================================" << endl;
     }
 
     string getBrand() {
