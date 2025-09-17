@@ -19,7 +19,8 @@ private:
 public:
     Appointment(int pid, int did, string d, string t)
         : id(nextId++), patientId(pid), doctorId(did), date(d), time(t), status("Scheduled") {}
-    int getId() const { return id; }
+    int getId() { 
+        return id; }
     void setStatus(string s) { status = s; }
     void display() const {
         cout << "Appointment " << id << ": Patient " << patientId

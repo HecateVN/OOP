@@ -1,0 +1,139 @@
+#include <iostream>
+#include <vector>
+#include <string>
+using namespace std;
+
+// ---------------- Transaction ----------------
+class Transaction {
+private:
+    double amount;
+    string type;   // deposit / withdraw
+public:
+    Transaction(double amt, string t) : amount(amt), type(t) {}
+    void display() const {
+        cout << type << ": " << amount << endl;
+    }
+};
+
+// ---------------- Account (Base Class) ----------------
+class Account {
+protected:
+    int accountNumber;
+    string ownerName;
+    double balance;
+    vector<Transaction> history;
+public:
+    Account(int accNo, string owner, double bal = 0.0)
+        : accountNumber(accNo), ownerName(owner), balance(bal) {}
+
+    virtual ~Account() {}
+
+    virtual void deposit(double amt) {
+        balance += amt;
+        history.push_back(Transaction(amt, "Deposit"));
+    }
+
+    virtual void withdraw(double amt) {
+        if (amt <= balance) {
+            balance -= amt;
+            history.push_back(Transaction(amt, "Withdraw"));
+        } else {
+            cout << "Error: Insufficient funds!" << endl;
+        }
+    }
+
+    double getBalance() const { return balance; }
+
+    // Operator overload: add transaction directly
+    Account& operator+=(const Transaction& t) {
+        deposit(10);
+        return *this;
+    }
+
+    // Compare by balance
+    bool operator==(const Account& other) const {
+        return this->balance == other.balance;
+    }
+
+    virtual void display() const {
+        cout << "Account #" << accountNumber
+             << " | Owner: " << ownerName
+             << " | Balance: " << balance << endl;
+    }
+};
+
+// ---------------- SavingsAccount (Derived Class) ----------------
+class SavingsAccount : public Account {
+private:
+    double interestRate;
+public:
+    SavingsAccount(int accNo, string owner, double bal, double rate)
+        : Account(accNo, owner, bal), interestRate(rate) {}
+
+    void applyInterest() {
+        double interest = balance * interestRate;
+        deposit(interest);
+        cout << "Interest applied: " << interest << endl;
+    }
+
+    // override withdraw: add fee rule
+    void withdraw(double amt) override {
+        if (amt > balance) {
+            cout << "Savings Account: Cannot overdraw!" << endl;
+        } else {
+            balance -= amt;
+            history.push_back(Transaction(amt, "Withdraw(Savings)"));
+        }
+    }
+};
+
+// ---------------- Customer ----------------
+class Customer {
+private:
+    string name;
+    int id;
+    vector<Account*> accounts;
+public:
+    Customer(string n, int i) : name(n), id(i) {}
+
+    void addAccount(Account* acc) {
+        accounts.push_back(acc);
+    }
+
+    void displayAccounts() const {
+        cout << "Customer: " << name << " (ID: " << id << ")" << endl;
+        for (auto acc : accounts) {
+            acc->display();
+        }
+    }
+};
+
+// ---------------- Main Demo ----------------
+int main() {
+    Account acc1(1001, "Alice", 500);
+    SavingsAccount sav1(2001, "Bob", 1000, 0.05);
+
+    acc1.deposit(200);
+    acc1.withdraw(100);
+
+    sav1.deposit(500);
+    sav1.applyInterest();
+    sav1.withdraw(2000); // should fail
+
+    // Compare accounts
+    if (acc1 == sav1) {
+        cout << "Accounts have equal balance!" << endl;
+    } else {
+        cout << "Accounts have different balances." << endl;
+    }
+
+    // Customer with accounts
+    Customer c1("Charlie", 1);
+    c1.addAccount(&acc1);
+    c1.addAccount(&sav1);
+
+    cout << "\n--- Customer Info ---\n";
+    c1.displayAccounts();
+
+    return 0;
+}
