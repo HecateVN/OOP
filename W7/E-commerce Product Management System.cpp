@@ -1,18 +1,17 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include <iomanip>
 using namespace std;
 
 // ======================== INTERFACE: Discountable ==========================
-// Abstract interface: bất cứ lớp nào kế thừa đều phải cài đặt applyDiscount
+// Abstract interface: all subclasses must implement applyDiscount()
 class Discountable {
 public:
     virtual double applyDiscount(double rate) = 0;
-    virtual ~Discountable() = default;
+    virtual ~Discountable() {}
 };
 
-// ======================== BASE CLASS: Product ==========================
+// ======================== BASE CLASS: Product ==============================
 class Product : public Discountable {
 private:
     string id;
@@ -21,302 +20,196 @@ private:
     int stock;
 
 public:
-    Product(const string& id, const string& name, double price, int stock)
-        : id(id), name(name), price(price), stock(stock) {}
-
-    virtual ~Product() = default;
-
-    // Getter / Setter
-    string getId() const { return id; }
-    string getName() const { return name; }
-    double getPrice() const { return price; }
-    int getStock() const { return stock; }
-    void setPrice(double p) { price = p; }
-    void setStock(int s) { stock = s; }
-
-    // Display (virtual for polymorphism)
-    virtual void display() const {
-        cout << "Product [" << id << "] " << name
-             << " - $" << fixed << setprecision(2) << price
-             << " | Stock: " << stock << '\n';
+    // Constructor
+    Product(string pid, string pname, double pprice, int pstock) {
+        id = pid;
+        name = pname;
+        price = pprice;
+        stock = pstock;
     }
 
-    // Update stock (can be overridden)
+    // Getters
+    string getId() { return id; }
+    string getName() { return name; }
+    double getPrice() { return price; }
+    int getStock() { return stock; }
+
+    // Update stock
     virtual void updateStock(int quantity) {
-        if (stock + quantity < 0) {
-            cout << "Not enough stock of " << name << " to remove " << -quantity << " units.\n";
-        } else {
+        if (stock + quantity >= 0) {
             stock += quantity;
+        } else {
+            cout << "Not enough stock for " << name << endl;
         }
     }
 
-    // Implement Discountable
+    // Display product info
+    virtual void display() {
+        cout << "Product [" << id << "] " << name 
+             << " - $" << price 
+             << " | Stock: " << stock << endl;
+    }
+
+    // Implement discount interface
     double applyDiscount(double rate) override {
-        if (rate < 0.0 || rate > 1.0) {
-            cout << "Invalid discount rate. No change.\n";
-            return price;
-        }
-        double discounted = price * (1.0 - rate);
-        return discounted;
+        return price * (1 - rate);
     }
 
-    // Overload == to compare by ID
-    bool operator==(const Product& other) const {
-        return this->id == other.id;
+    // Overload == (compare by id)
+    bool operator==(Product& other) {
+        return id == other.id;
     }
 };
 
-// ======================== DERIVED CLASSES ==========================
-// Electronics derived from Product
+// ======================== DERIVED CLASSES =================================
 class Electronics : public Product {
 private:
-    int warrantyMonths;
+    int warranty;
 
 public:
-    Electronics(const string& id, const string& name, double price, int stock, int warranty)
-        : Product(id, name, price, stock), warrantyMonths(warranty) {}
+    Electronics(string id, string name, double price, int stock, int w)
+        : Product(id, name, price, stock), warranty(w) {}
 
-    void display() const override {
+    void display() override {
         cout << "Electronics [" << getId() << "] " << getName()
-             << " - $" << fixed << setprecision(2) << getPrice()
+             << " - $" << getPrice()
              << " | Stock: " << getStock()
-             << " | Warranty: " << warrantyMonths << " months\n";
+             << " | Warranty: " << warranty << " months" << endl;
     }
 
     void updateStock(int quantity) override {
-        cout << "(Electronics stock update: handle fragile packaging)\n";
+        cout << "(Fragile handling for electronics)\n";
         Product::updateStock(quantity);
     }
 };
 
-// Clothing derived from Product
 class Clothing : public Product {
 private:
     string size;
 
 public:
-    Clothing(const string& id, const string& name, double price, int stock, const string& size)
-        : Product(id, name, price, stock), size(size) {}
+    Clothing(string id, string name, double price, int stock, string s)
+        : Product(id, name, price, stock), size(s) {}
 
-    void display() const override {
+    void display() override {
         cout << "Clothing [" << getId() << "] " << getName()
-             << " - $" << fixed << setprecision(2) << getPrice()
+             << " - $" << getPrice()
              << " | Stock: " << getStock()
-             << " | Size: " << size << '\n';
+             << " | Size: " << size << endl;
     }
 };
 
-// ======================== TEMPLATE CLASS: InventoryList ==========================
-// Generic container for items of type T
+// ======================== TEMPLATE CLASS: InventoryList ====================
 template <typename T>
 class InventoryList {
 private:
     vector<T> items;
 
 public:
-    void add(const T& item) {
+    void add(T item) {
         items.push_back(item);
     }
 
-    void removeAt(int index) {
-        if (index >= 0 && index < (int)items.size())
-            items.erase(items.begin() + index);
-        else
-            throw out_of_range("Invalid index in removeAt");
-    }
-
-    int size() const { return static_cast<int>(items.size()); }
-
-    T& get(int index) {
-        if (index < 0 || index >= (int)items.size())
-            throw out_of_range("Invalid index in get");
+    T get(int index) {
         return items[index];
     }
 
-    const T& get(int index) const {
-        if (index < 0 || index >= (int)items.size())
-            throw out_of_range("Invalid index in get const");
-        return items[index];
-    }
-
-    void displayAll() const {
-        for (const auto& item : items) {
-            // assume T supports ->display() if T is shared_ptr<Product>
-            // or supports display() if T is object with display().
-            if constexpr (is_pointer<T>::value) {
-                // pointer case (raw pointer) - not recommended but supported
-                if (item) item->display();
-            } else {
-                // attempt to handle smart pointers and objects:
-                // if T is shared_ptr<U>, use item->display(); else item.display()
-                using ElemType = typename std::decay<decltype(item)>::type;
-                // detect shared_ptr by simple approach:
-                // Attempt to call arrow operator; if fails at compile-time, fallback to dot.
-                // For simplicity, try both forms via overload resolution using lambdas is complex;
-                // Since typical usage below is InventoryList<shared_ptr<Product>>, assume -> works.
-                item->display();
-            }
+    void displayAll() {
+        for (auto item : items) {
+            item->display();
         }
     }
 };
 
-// ======================== CLASS: ShoppingCart ==========================
-// Stores product pointers + quantity
-struct CartItem {
-    shared_ptr<Product> product;
-    int quantity;
-};
-
+// ======================== CLASS: ShoppingCart ==============================
 class ShoppingCart : public Discountable {
 private:
-    vector<CartItem> cartItems;
-    double total = 0.0;
+    vector<Product*> cart;
+    double total = 0;
 
 public:
-    ShoppingCart() = default;
-
-    // Overload += to add a product (shared_ptr<Product>)
-    ShoppingCart& operator+=(shared_ptr<Product> p) {
-        if (!p) {
-            cout << "Cannot add null product pointer to cart.\n";
-            return *this;
+    // Overload += to add product to cart
+    ShoppingCart& operator+=(Product* p) {
+        if (p->getStock() > 0) {
+            cart.push_back(p);
+            total += p->getPrice();
+            p->updateStock(-1);
+        } else {
+            cout << "Cannot add " << p->getName() << " (out of stock)" << endl;
         }
-
-        if (p->getStock() <= 0) {
-            cout << "Cannot add " << p->getName() << " (out of stock)\n";
-            return *this;
-        }
-
-        // If product exists in cart, increase quantity
-        bool found = false;
-        for (auto& item : cartItems) {
-            if (*item.product == *p) {
-                item.quantity++;
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            CartItem ci{ p, 1 };
-            cartItems.push_back(ci);
-        }
-
-        total += p->getPrice();
-        p->updateStock(-1); // decrement inventory
         return *this;
     }
 
-    // Remove one unit of product by id (returns true if removed)
-    bool removeOneById(const string& id) {
-        for (size_t i = 0; i < cartItems.size(); ++i) {
-            if (cartItems[i].product->getId() == id) {
-                total -= cartItems[i].product->getPrice();
-                cartItems[i].quantity--;
-                cartItems[i].product->updateStock(1); // return one to stock
-                if (cartItems[i].quantity <= 0) {
-                    cartItems.erase(cartItems.begin() + i);
-                }
-                return true;
-            }
+    void display() {
+        cout << "=== Cart Contents ===" << endl;
+        for (auto p : cart) {
+            p->display();
         }
-        return false;
+        cout << "Total: $" << total << endl;
     }
 
-    void display() const {
-        cout << "=== Cart Contents ===\n";
-        if (cartItems.empty()) {
-            cout << "(empty)\n";
-        } else {
-            for (const auto& item : cartItems) {
-                cout << item.quantity << "x ";
-                item.product->display();
-            }
-        }
-        cout << "Total: $" << fixed << setprecision(2) << total << "\n";
-    }
-
-    // Apply discount to total (mutates total)
     double applyDiscount(double rate) override {
-        if (rate < 0.0 || rate > 1.0) {
-            cout << "Invalid discount rate. No change.\n";
-            return total;
-        }
-        total = total * (1.0 - rate);
+        total = total * (1 - rate);
         return total;
     }
-
-    double getTotal() const { return total; }
 };
 
-// ======================== CLASS: Order ==========================
+// ======================== CLASS: Order ====================================
 class Order {
 private:
     string orderId;
     ShoppingCart cart;
 
 public:
-    Order(const string& id, const ShoppingCart& c)
-        : orderId(id), cart(c) {}
+    Order(string id, ShoppingCart c) {
+        orderId = id;
+        cart = c;
+    }
 
-    void display() const {
-        cout << "\n=== Order " << orderId << " ===\n";
+    void display() {
+        cout << "\n=== Order " << orderId << " ===" << endl;
         cart.display();
     }
 };
 
-// ======================== TESTING MAIN ==========================
+// ======================== MAIN ============================================
 int main() {
-    cout << "=== E-COMMERCE PRODUCT MANAGEMENT DEMO ===\n\n";
+    // Create products
+    Product book("P01", "C++ Book", 15.0, 5);
+    Electronics laptop("E01", "Laptop", 1200.0, 2, 24);
+    Clothing tshirt("C01", "T-Shirt", 20.0, 3, "L");
 
-    // Create some products
-    auto p1 = make_shared<Product>("P01", "Book: C++ Basics", 15.00, 5);
-    auto p2 = make_shared<Electronics>("E01", "Laptop Pro", 1200.00, 2, 24);
-    auto p3 = make_shared<Clothing>("C01", "T-Shirt", 20.00, 3, "L");
-    auto p4 = make_shared<Product>("P02", "Notebook", 3.50, 0); // out of stock example
+    // Inventory
+    InventoryList<Product*> inventory;
+    inventory.add(&book);
+    inventory.add(&laptop);
+    inventory.add(&tshirt);
 
-    // Inventory using template
-    InventoryList<shared_ptr<Product>> inventory;
-    inventory.add(p1);
-    inventory.add(p2);
-    inventory.add(p3);
-    inventory.add(p4);
-
-    cout << "--- INVENTORY ---\n";
+    cout << "--- INVENTORY ---" << endl;
     inventory.displayAll();
 
-    // Shopping cart demo
+    // Cart
     ShoppingCart cart;
-    cart += p1; // add book
-    cart += p2; // add laptop
-    cart += p3; // add t-shirt
-    cart += p2; // add laptop again -> quantity 2
-    cart += p2; // attempt third laptop -> should fail due to stock
-    cart += p4; // attempt to add out-of-stock
+    cart += &book;
+    cart += &laptop;
+    cart += &tshirt;
+    cart += &laptop; // laptop lần 2
+    cart += &laptop; // hết stock
 
-    cout << "\n--- CART BEFORE DISCOUNT ---\n";
+    cout << "\n--- CART BEFORE DISCOUNT ---" << endl;
     cart.display();
 
-    // Remove one T-Shirt
-    cout << "\nRemoving one T-Shirt (if exists)...\n";
-    bool removed = cart.removeOneById("C01");
-    cout << (removed ? "Removed one unit.\n" : "No such item in cart.\n");
-
-    cout << "\n--- CART AFTER REMOVAL ---\n";
-    cart.display();
-
-    // Apply discount polymorphically
-    cout << "\nApplying 10% discount to cart...\n";
-    cart.applyDiscount(0.10);
+    cout << "\nApplying 10% discount..." << endl;
+    cart.applyDiscount(0.1);
     cart.display();
 
     // Compare products
-    cout << "\nCompare p1 and p2: " << ((*p1 == *p2) ? "same" : "different") << "\n";
-    cout << "Compare p1 and p1: " << ((*p1 == *p1) ? "same" : "different") << "\n";
+    cout << "\nCompare book and laptop: " 
+         << ((book == laptop) ? "same" : "different") << endl;
 
-    // Create an order from cart
+    // Order
     Order order1("O001", cart);
     order1.display();
 
-    cout << "\nDemo finished.\n";
     return 0;
 }
